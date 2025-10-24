@@ -1,0 +1,92 @@
+pool:
+  vmImage: ubuntu-latest
+
+parameters:
+  # Service connection used to authenticate against Azure DevOps
+  - name: adoServiceConnectionAwsName
+    type: string
+    default: vecto-setup-provisioner
+
+  # Agent pool name
+  - name: adoAgentPoolName
+    type: string
+    default: Azure Pipelines
+
+  # VECTO pipeline repository name
+  - name: adoVectoPipelineRepoName
+    type: string
+    default: Pipeline--VECTO
+
+  # VECTO pipeline repository release branch name
+  - name: adoVectoPipelineReleaseBranchName
+    type: string
+    default: main
+
+  # VECTO pipeline name
+  - name: adoVectoPipelineName
+    type: string
+    default: Pipeline--VECTO
+
+  # VECTO pipeline variable group name
+  - name: adoVectoPipelineVariableGroupName
+    type: string
+    default: VECTO_ACCESS_TOKEN
+
+  # Name of the remote state S3 bucket
+  - name: awsVectoTfStateBucketName
+    type: string
+    default: vecto-tf-state-<VECTO_ACCOUNT_ID>
+
+  # Default region for AWS operations
+  - name: awsRegionName
+    type: string
+    default: eu-central-1
+
+  # URL of the VECTO repository
+  - name: vectoRepoGitUrl
+    type: string
+    default: github.com/acai-solutions/
+
+  # Name of the VECTO repository
+  - name: vectoRepoName
+    type: string
+    default: terraform-aws-acai-vecto
+
+  # Name of the VECTO repository branch
+  - name: vectoRepoBranchName
+    type: string
+    default: main
+
+  # Terraform version to install during the run
+  - name: tfVersion
+    type: string
+    default: 1.5.7
+
+variables:
+  - group: VECTO_ACCESS_TOKEN
+
+trigger:
+- main
+
+stages:
+  - template: azure-pipelines-templates/10_terraform_preparation.yml
+    parameters:
+      adoServiceConnectionAwsName: ${{ parameters.adoServiceConnectionAwsName }}
+      adoAgentPoolName: ${{ parameters.adoAgentPoolName }}
+      adoVectoPipelineRepoName: ${{ parameters.adoVectoPipelineRepoName }}
+      adoVectoPipelineReleaseBranchName: ${{ parameters.adoVectoPipelineReleaseBranchName }}
+      adoVectoPipelineName: ${{ parameters.adoVectoPipelineName }}
+      adoVectoPipelineVariableGroupName: ${{ parameters.adoVectoPipelineVariableGroupName }}
+      awsVectoTfStateBucketName: ${{ parameters.awsVectoTfStateBucketName }}
+      awsRegionName: ${{ parameters.awsRegionName }}
+      vectoRepoGitUrl: ${{ parameters.vectoRepoGitUrl }}
+      vectoRepoName: ${{ parameters.vectoRepoName }}
+      vectoRepoBranchName: ${{ parameters.vectoRepoBranchName }}
+      tfVersion: ${{ parameters.tfVersion }}
+
+  - template: azure-pipelines-templates/20_terraform_approval_apply.yml
+    parameters:
+      adoServiceConnectionAwsName: ${{ parameters.adoServiceConnectionAwsName }}
+      awsRegionName: ${{ parameters.awsRegionName }}
+      tfVersion: ${{ parameters.tfVersion }}
+      tfApplyBranch: true

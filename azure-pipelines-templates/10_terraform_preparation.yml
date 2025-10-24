@@ -1,0 +1,135 @@
+parameters:
+  - name: adoServiceConnectionAwsName
+    type: string 
+  - name: adoAgentPoolName
+    type: string 
+  - name: adoVectoPipelineRepoName
+    type: string 
+  - name: adoVectoPipelineReleaseBranchName
+    type: string 
+  - name: adoVectoPipelineName
+    type: string 
+  - name: adoVectoPipelineVariableGroupName
+    type: string 
+  - name: awsVectoTfStateBucketName
+    type: string
+  - name: awsRegionName
+    type: string
+  - name: vectoRepoGitUrl
+    type: string
+  - name: vectoRepoName
+    type: string
+  - name: vectoRepoBranchName
+    type: string
+  - name: tfVersion
+    type: string
+    default: 1.6.0
+  - name: directory
+    type: string
+    default: terraform
+
+stages:
+  - stage: TerraformPreparation
+    displayName: "Terraform AWS-Side Preparation"
+    jobs:
+    - job: Preparation
+      displayName: "Terraform Init, Validate & Plan"
+      steps:
+      - bash: |
+          git version
+          echo "Registering token for VECTO-Repo at https://${VECTO_GIT_URL}"
+          echo "Length of VECTO_REPO_ACCESS: ${#VECTO_REPO_ACCESS}"
+          git config --global --add url."https://${VECTO_REPO_ACCESS}@${VECTO_GIT_URL}".insteadOf "https://${VECTO_GIT_URL}"
+        displayName: "Preparing the Agent - Installing zip, unzip, registering tokens for ADO"
+        env:
+          VECTO_REPO_ACCESS: $(PAT-VECTO_REPO_ACCESS)
+          VECTO_GIT_URL: ${{ parameters.vectoRepoGitUrl }}
+
+      - checkout: self
+        persistCredentials: true
+
+      - task: TerraformInstaller@1
+        inputs:
+          terraformVersion: ${{ parameters.tfVersion }}
+
+      - task: AWSShellScript@1
+        displayName: "Run Terraform Init & Validate"
+        inputs:
+          awsCredentials:  ${{ parameters.adoServiceConnectionAwsName }}
+          regionName: ${{ parameters.awsRegionName }}
+          scriptType: "inline"
+          inlineScript: |
+            cd ${{parameters.directory}} 
+            terraform init -backend-config="bucket=${{ parameters.awsVectoTfStateBucketName }}" -backend-config="region=${{ parameters.awsRegionName }}"
+            terraform validate
+
+      - script: |
+          echo "Organization (Collection) ID: $(System.CollectionId)"
+          # Extracting organization name from the URL
+          ORG_NAME=$(echo "$(System.TeamFoundationCollectionUri)" | awk -F'/' '{print $(NF-1)}')  # Adjust if necessary
+          cd ${{parameters.directory}}
+
+          # Write the Terraform variables in HCL format
+          cat > vecto_setup_settings.tfvars <<EOF
+          vecto_setup_settings = {
+            aws_settings = {
+              state_bucket_name   = "${{ parameters.awsVectoTfStateBucketName }}"
+              target_region       = "${{ parameters.awsRegionName }}"
+            }    
+            ado_settings = {
+              organization_id   = "$(System.CollectionId)"
+              organization_name = "${ORG_NAME}"
+              project_name      = "$(System.TeamProject)"
+              agent_pool_name   = "${{ parameters.adoAgentPoolName }}"
+              vecto_pipeline_repo = {
+                repo_name           = "${{ parameters.adoVectoPipelineRepoName }}"
+                release_branch_name = "${{ parameters.adoVectoPipelineReleaseBranchName }}"
+              }
+              vecto_pipeline = {
+                pipeline_name       = "${{ parameters.adoVectoPipelineName }}"
+                variable_group_name = "${{ parameters.adoVectoPipelineVariableGroupName }}"
+              }
+            }
+            vecto_repo_settings = {
+              git_url     = "${{ parameters.vectoRepoGitUrl }}"
+              repo_name   = "${{ parameters.vectoRepoName }}"
+              repo_branch = "${{ parameters.vectoRepoBranchName }}"
+            }
+          }
+          EOF
+        displayName: 'Prepare ADO Settings for Terraform'
+
+
+      - task: AWSShellScript@1
+        displayName: "Run Terraform Plan"
+        inputs:
+          awsCredentials:  ${{ parameters.adoServiceConnectionAwsName }}
+          regionName: ${{ parameters.awsRegionName }}
+          scriptType: "inline"
+          continueOnError: false
+          inlineScript: |
+            cd ${{parameters.directory}} 
+            export AZDO_PERSONAL_ACCESS_TOKEN=$(PAT-VECTO_ADO_MANAGEMENT_ACCESS)
+
+            terraform plan --var-file=vecto_setup_settings.tfvars --out=terraform.tfplan
+            terraform show terraform.tfplan > terraform.tfplan.show
+        env:
+            PAT-VECTO_ADO_MANAGEMENT_ACCESS: $(PAT-VECTO_ADO_MANAGEMENT_ACCESS)
+    
+      - task: PublishPipelineArtifact@1 
+        displayName: Publish artefact terraform.tfplan.show
+        inputs: 
+          targetPath: '${{ parameters.directory }}/terraform.tfplan.show' 
+          artifactName: 'terraform.tfplan.show'
+
+      - bash: |
+          cd $(System.DefaultWorkingDirectory)
+          zip -r terraform_folder.zip ./${{ parameters.directory }}/
+          ls
+        displayName: Zip terraform folder
+
+      - task: PublishPipelineArtifact@1 
+        displayName: Publish artefact terraform_folder.zip
+        inputs: 
+          targetPath: 'terraform_folder.zip' 
+          artifactName: 'terraform_folder.zip'
