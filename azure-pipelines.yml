@@ -12,6 +12,11 @@ parameters:
     type: string
     default: Azure Pipelines
 
+  # Agent pool name
+  - name: adoServiceConnectionOidcAwsName
+    type: string
+    default: acai-vecto-oidc-connection-to-aws
+
   # VECTO pipeline repository name
   - name: adoVectoPipelineRepoName
     type: string
@@ -41,6 +46,11 @@ parameters:
   - name: awsRegionName
     type: string
     default: eu-central-1
+
+  # Prefix for AWS resource names
+  - name: awsResourcePrefix
+    type: string
+    default: ""
 
   # URL of the VECTO repository
   - name: vectoRepoGitUrl
@@ -73,12 +83,14 @@ stages:
     parameters:
       adoServiceConnectionAwsName: ${{ parameters.adoServiceConnectionAwsName }}
       adoAgentPoolName: ${{ parameters.adoAgentPoolName }}
+      adoServiceConnectionOidcAwsName: ${{ parameters.adoServiceConnectionOidcAwsName }}
       adoVectoPipelineRepoName: ${{ parameters.adoVectoPipelineRepoName }}
       adoVectoPipelineReleaseBranchName: ${{ parameters.adoVectoPipelineReleaseBranchName }}
       adoVectoPipelineName: ${{ parameters.adoVectoPipelineName }}
       adoVectoPipelineVariableGroupName: ${{ parameters.adoVectoPipelineVariableGroupName }}
       awsVectoTfStateBucketName: ${{ parameters.awsVectoTfStateBucketName }}
       awsRegionName: ${{ parameters.awsRegionName }}
+      awsResourcePrefix: ${{ parameters.awsResourcePrefix }}
       vectoRepoGitUrl: ${{ parameters.vectoRepoGitUrl }}
       vectoRepoName: ${{ parameters.vectoRepoName }}
       vectoRepoBranchName: ${{ parameters.vectoRepoBranchName }}
