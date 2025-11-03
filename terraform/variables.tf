@@ -3,16 +3,18 @@ variable "vecto_setup_settings" {
   type = object({
     aws_settings = object({
       state_bucket_name = string
-      target_region = string
+      target_region     = string
+      resource_prefix   = optional(string, "")
     })
     ado_settings = object({
-      organization_id   = string
-      organization_name = string
-      project_name      = string
-      agent_pool_name   = string
+      organization_id            = string
+      organization_name          = string
+      project_name               = string
+      agent_pool_name            = string
+      oidc_service_endpoint_name = optional(string, "acai-vecto-oidc-connection-to-aws")
       vecto_pipeline_repo = object({
         repo_name           = optional(string, "pipeline--vecto") # Name of existing or new ADO Repo
-        release_branch_name = optional(string, "main")               # for an existing repo, this must be a new branch name
+        release_branch_name = optional(string, "main")            # for an existing repo, this must be a new branch name
       })
       vecto_pipeline = object({
         pipeline_name       = optional(string, "pipeline--vecto")

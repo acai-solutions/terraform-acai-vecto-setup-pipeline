@@ -3,6 +3,8 @@ parameters:
     type: string 
   - name: adoAgentPoolName
     type: string 
+  - name: adoServiceConnectionOidcAwsName
+    type: string 
   - name: adoVectoPipelineRepoName
     type: string 
   - name: adoVectoPipelineReleaseBranchName
@@ -18,6 +20,8 @@ parameters:
   - name: awsResourceNamePrefix
     type: string
   - name: awsRegionName
+    type: string
+  - name: awsResourcePrefix
     type: string
   - name: vectoRepoGitUrl
     type: string
@@ -86,10 +90,11 @@ stages:
               resource_prefix   = "${{ parameters.awsResourceNamePrefix }"
             }    
             ado_settings = {
-              organization_id   = "$(System.CollectionId)"
-              organization_name = "${ORG_NAME}"
-              project_name      = "$(System.TeamProject)"
-              agent_pool_name   = "${{ parameters.adoAgentPoolName }}"
+              organization_id            = "$(System.CollectionId)"
+              organization_name          = "${ORG_NAME}"
+              project_name               = "$(System.TeamProject)"
+              agent_pool_name            = "${{ parameters.adoAgentPoolName }}"
+              oidc_service_endpoint_name = "${{ parameters.adoServiceConnectionOidcAwsName }}"
               vecto_pipeline_repo = {
                 repo_name           = "${{ parameters.adoVectoPipelineRepoName }}"
                 release_branch_name = "${{ parameters.adoVectoPipelineReleaseBranchName }}"
