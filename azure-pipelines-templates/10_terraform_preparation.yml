@@ -13,6 +13,10 @@ parameters:
     type: string 
   - name: awsVectoTfStateBucketName
     type: string
+  - name: awsVectoTfStateFilePrefix
+    type: string
+  - name: awsResourceNamePrefix
+    type: string
   - name: awsRegionName
     type: string
   - name: vectoRepoGitUrl
@@ -60,7 +64,10 @@ stages:
           scriptType: "inline"
           inlineScript: |
             cd ${{parameters.directory}} 
-            terraform init -backend-config="bucket=${{ parameters.awsVectoTfStateBucketName }}" -backend-config="region=${{ parameters.awsRegionName }}"
+            terraform init \
+              -backend-config="bucket=${{ parameters.awsVectoTfStateBucketName }}" \
+              -backend-config="key=${{ parameters.awsVectoTfStateFilePrefix }}acai-vecto-setup.tfstate" \
+              -backend-config="region=${{ parameters.awsRegionName }}"
             terraform validate
 
       - script: |
@@ -73,8 +80,10 @@ stages:
           cat > vecto_setup_settings.tfvars <<EOF
           vecto_setup_settings = {
             aws_settings = {
-              state_bucket_name   = "${{ parameters.awsVectoTfStateBucketName }}"
-              target_region       = "${{ parameters.awsRegionName }}"
+              state_bucket_name = "${{ parameters.awsVectoTfStateBucketName }}"
+              state_file_prefix = "${{ parameters.awsVectoTfStateFilePrefix }}"
+              target_region     = "${{ parameters.awsRegionName }}"
+              resource_prefix   = "${{ parameters.awsResourceNamePrefix }"
             }    
             ado_settings = {
               organization_id   = "$(System.CollectionId)"
@@ -94,6 +103,7 @@ stages:
               git_url     = "${{ parameters.vectoRepoGitUrl }}"
               repo_name   = "${{ parameters.vectoRepoName }}"
               repo_branch = "${{ parameters.vectoRepoBranchName }}"
+              state_file_prefix   = "${{ parameters.awsVectoTfStateFilePrefix }}"
             }
           }
           EOF

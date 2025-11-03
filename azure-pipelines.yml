@@ -37,6 +37,16 @@ parameters:
     type: string
     default: vecto-tf-state-<VECTO_ACCOUNT_ID>
 
+  # Prefix of the VECTO terraform state files
+  - name: awsVectoTfStateFilePrefix
+    type: string
+    default: ""
+
+  # Prefix of the VECTO Setup resources 
+  - name: awsResourceNamePrefix
+    type: string
+    default: ""
+
   # Default region for AWS operations
   - name: awsRegionName
     type: string
@@ -78,6 +88,8 @@ stages:
       adoVectoPipelineName: ${{ parameters.adoVectoPipelineName }}
       adoVectoPipelineVariableGroupName: ${{ parameters.adoVectoPipelineVariableGroupName }}
       awsVectoTfStateBucketName: ${{ parameters.awsVectoTfStateBucketName }}
+      awsVectoTfStateFilePrefix: ${{ parameters.awsVectoTfStateFilePrefix }}
+      awsResourceNamePrefix: ${{ parameters.awsResourceNamePrefix }}
       awsRegionName: ${{ parameters.awsRegionName }}
       vectoRepoGitUrl: ${{ parameters.vectoRepoGitUrl }}
       vectoRepoName: ${{ parameters.vectoRepoName }}
