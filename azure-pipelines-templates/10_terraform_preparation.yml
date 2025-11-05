@@ -32,8 +32,6 @@ parameters:
     type: string
   - name: awsRegionName
     type: string
-  - name: awsResourcePrefix
-    type: string
   - name: vectoRepoGitUrl
     type: string
   - name: vectoRepoName
@@ -98,8 +96,8 @@ stages:
               state_bucket_name = "${{ parameters.awsVectoTfStateBucketName }}"
               state_file_prefix = "${{ parameters.awsVectoTfStateFilePrefix }}"
               target_region     = "${{ parameters.awsRegionName }}"
-              resource_prefix   = "${{ parameters.awsResourceNamePrefix }"
-            }    
+              resource_prefix   = "${{ parameters.awsResourceNamePrefix }}"
+            }
             ado_settings = {
               organization_id            = "$(System.CollectionId)"
               organization_name          = "${ORG_NAME}"

@@ -56,22 +56,17 @@ parameters:
   # Prefix of the VECTO terraform state files
   - name: awsVectoTfStateFilePrefix
     type: string
-    default: ""
+    default: '*none*' # optional value. Leave "*none*" unless a custom prefix is needed.
 
   # Prefix of the VECTO Setup resources 
   - name: awsResourceNamePrefix
     type: string
-    default: ""
+    default: '*none*' # optional value. Leave "*none*" unless a custom prefix is needed.
 
   # Default region for AWS operations
   - name: awsRegionName
     type: string
     default: eu-central-1
-
-  # Prefix for AWS resource names
-  - name: awsResourcePrefix
-    type: string
-    default: ""
 
   # URL of the VECTO repository
   - name: vectoRepoGitUrl
@@ -95,6 +90,16 @@ parameters:
 
 variables:
   - group: VECTO_ACCESS_TOKEN
+  - name: awsVectoTfStateFilePrefixResolved
+    ${{ if ne(parameters.awsVectoTfStateFilePrefix, '*none*') }}:
+      value: ${{ parameters.awsVectoTfStateFilePrefix }}
+    ${{ else }}:
+      value: ''
+  - name: awsResourceNamePrefixResolved
+    ${{ if ne(parameters.awsResourceNamePrefix, '*none*') }}:
+      value: ${{ parameters.awsResourceNamePrefix }}
+    ${{ else }}:
+      value: ''
 
 trigger:
 - main
@@ -110,10 +115,9 @@ stages:
       adoVectoPipelineName: ${{ parameters.adoVectoPipelineName }}
       adoVectoPipelineVariableGroupName: ${{ parameters.adoVectoPipelineVariableGroupName }}
       awsVectoTfStateBucketName: ${{ parameters.awsVectoTfStateBucketName }}
-      awsVectoTfStateFilePrefix: ${{ parameters.awsVectoTfStateFilePrefix }}
-      awsResourceNamePrefix: ${{ parameters.awsResourceNamePrefix }}
+      awsVectoTfStateFilePrefix: ${{ variables.awsVectoTfStateFilePrefixResolved }}
+      awsResourceNamePrefix: ${{ variables.awsResourceNamePrefixResolved }}
       awsRegionName: ${{ parameters.awsRegionName }}
-      awsResourcePrefix: ${{ parameters.awsResourcePrefix }}
       vectoRepoGitUrl: ${{ parameters.vectoRepoGitUrl }}
       vectoRepoName: ${{ parameters.vectoRepoName }}
       vectoRepoBranchName: ${{ parameters.vectoRepoBranchName }}
