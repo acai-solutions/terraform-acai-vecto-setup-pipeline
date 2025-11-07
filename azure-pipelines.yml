@@ -12,120 +12,104 @@
 pool:
   vmImage: ubuntu-latest
 
-parameters:
-  # Service connection used to authenticate against Azure DevOps
-  - name: adoServiceConnectionAwsName
-    type: string
-    default: vecto-setup-provisioner
-
-  # Agent pool name
-  - name: adoAgentPoolName
-    type: string
-    default: Azure Pipelines
-
-  # Agent pool name
-  - name: adoServiceConnectionOidcAwsName
-    type: string
-    default: acai-vecto-oidc-connection-to-aws
-
-  # VECTO pipeline repository name
-  - name: adoVectoPipelineRepoName
-    type: string
-    default: Pipeline--VECTO
-
-  # VECTO pipeline repository release branch name
-  - name: adoVectoPipelineReleaseBranchName
-    type: string
-    default: main
-
-  # VECTO pipeline name
-  - name: adoVectoPipelineName
-    type: string
-    default: Pipeline--VECTO
-
-  # VECTO pipeline variable group name
-  - name: adoVectoPipelineVariableGroupName
-    type: string
-    default: VECTO_ACCESS_TOKEN
-
-  # Name of the remote state S3 bucket
-  - name: awsVectoTfStateBucketName
-    type: string
-    default: vecto-tf-state-<VECTO_ACCOUNT_ID>
-
-  # Prefix of the VECTO terraform state files
-  - name: awsVectoTfStateFilePrefix
-    type: string
-    default: '*none*' # optional value. Leave "*none*" unless a custom prefix is needed.
-
-  # Prefix of the VECTO Setup resources 
-  - name: awsResourceNamePrefix
-    type: string
-    default: '*none*' # optional value. Leave "*none*" unless a custom prefix is needed.
-
-  # Default region for AWS operations
-  - name: awsRegionName
-    type: string
-    default: eu-central-1
-
-  # URL of the VECTO repository
-  - name: vectoRepoGitUrl
-    type: string
-    default: github.com/acai-solutions/
-
-  # Name of the VECTO repository
-  - name: vectoRepoName
-    type: string
-    default: terraform-aws-acai-vecto
-
-  # Name of the VECTO repository branch
-  - name: vectoRepoBranchName
-    type: string
-    default: main
-
-  # Terraform version to install during the run
-  - name: tfVersion
-    type: string
-    default: 1.5.7
-
-variables:
-  - group: VECTO_ACCESS_TOKEN
-  - name: awsVectoTfStateFilePrefixResolved
-    ${{ if ne(parameters.awsVectoTfStateFilePrefix, '*none*') }}:
-      value: ${{ parameters.awsVectoTfStateFilePrefix }}
-    ${{ else }}:
-      value: ''
-  - name: awsResourceNamePrefixResolved
-    ${{ if ne(parameters.awsResourceNamePrefix, '*none*') }}:
-      value: ${{ parameters.awsResourceNamePrefix }}
-    ${{ else }}:
-      value: ''
-
 trigger:
 - main
 
-stages:
-  - template: azure-pipelines-templates/10_terraform_preparation.yml
-    parameters:
-      adoServiceConnectionAwsName: ${{ parameters.adoServiceConnectionAwsName }}
-      adoAgentPoolName: ${{ parameters.adoAgentPoolName }}
-      adoServiceConnectionOidcAwsName: ${{ parameters.adoServiceConnectionOidcAwsName }}
-      adoVectoPipelineRepoName: ${{ parameters.adoVectoPipelineRepoName }}
-      adoVectoPipelineReleaseBranchName: ${{ parameters.adoVectoPipelineReleaseBranchName }}
-      adoVectoPipelineName: ${{ parameters.adoVectoPipelineName }}
-      adoVectoPipelineVariableGroupName: ${{ parameters.adoVectoPipelineVariableGroupName }}
-      awsVectoTfStateBucketName: ${{ parameters.awsVectoTfStateBucketName }}
-      awsVectoTfStateFilePrefix: ${{ variables.awsVectoTfStateFilePrefixResolved }}
-      awsResourceNamePrefix: ${{ variables.awsResourceNamePrefixResolved }}
-      awsRegionName: ${{ parameters.awsRegionName }}
-      vectoRepoGitUrl: ${{ parameters.vectoRepoGitUrl }}
-      vectoRepoName: ${{ parameters.vectoRepoName }}
-      vectoRepoBranchName: ${{ parameters.vectoRepoBranchName }}
-      tfVersion: ${{ parameters.tfVersion }}
+variables:
+- group: VECTO_ACCESS_TOKEN
 
-  - template: azure-pipelines-templates/20_terraform_approval_apply.yml
-    parameters:
-      adoServiceConnectionAwsName: ${{ parameters.adoServiceConnectionAwsName }}
-      awsRegionName: ${{ parameters.awsRegionName }}
-      tfVersion: ${{ parameters.tfVersion }}
-      tfApplyBranch: true
+# S3 bucket for VECTO Terraform remote state as created by VECTO Preparation CloudFormation.
+- name: awsVectoTfStateBucketName
+  value: 'vecto-setup-tf-state-<VECTO_ACCOUNT_ID>'
+
+# Azure DevOps service connection name for AWS access keys used by the setup pipeline.
+- name: adoServiceConnectionAwsName
+  value: 'vecto-setup-provisioner'
+
+# Variable group name that holds pipeline secrets/PATs for the VECTO pipeline.
+- name: adoVectoPipelineVariableGroupName
+  value: 'VECTO_ACCESS_TOKEN'
+
+# Base Git URL hosting the VECTO Terraform module repository. 
+# If you host it in your own environment, put your URL.
+- name: vectoRepoGitUrl
+  value: 'github.com/acai-solutions/'
+
+# Name of the Terraform module repository containing VECTO definitions.
+# If you host it in your own environment, put your repository name.
+- name: vectoRepoName
+  value: 'terraform-aws-acai-vecto'
+
+# Branch of the module repository to use for provisioning.
+- name: vectoRepoBranchName
+  value: '2.0.0'
+
+# Name of the created OIDC-based Azure DevOps service connection used to access AWS. 
+# The suffix 'aws-lz-prod' should represent the target AWS Organization.
+- name: oidcAdoServiceConnectionName
+  value: 'acai-vecto-oidc-connection-to-aws-lz-prod'
+
+# Set to true if an existing OIDC provider for Azure DevOps is already deployed in AWS.
+# This will be the case if you have a parallel VECTO installation running in the AWS Organization.
+- name: oidcAwsProviderDeployed
+  value: false
+
+# Agent pool name used to run the AWS pipeline jobs.
+- name: adoAgentPoolName
+  value: 'Azure Pipelines'
+
+# Display name of the VECTO pipeline created in Azure DevOps.
+- name: adoVectoPipelineName
+  value: 'Pipeline--VECTO'
+
+# Repository name in Azure DevOps that will host the VECTO pipeline definitions.
+- name: adoVectoPipelineRepoName
+  value: 'Pipeline--VECTO'
+
+# Branch name that will represent the AWS Organization.
+- name: adoVectoPipelineReleaseBranchName
+  value: 'aws-lz-prod'
+
+# Optional prefix to segregate the VECTO Terraform states,
+# in case of different parallel VECTO deployments in an AWS Organization.
+- name: awsVectoTfStateFilePrefix
+  value: ''
+
+# Optional prefix to segregate the VECTO AWS resources,
+# in case of different parallel VECTO deployments in an AWS Organization.
+- name: awsResourceNamePrefix
+  value: ''
+
+# AWS region where the VECTO resources will be provisioned.
+- name: awsRegionName
+  value: 'eu-central-1'
+
+# Terraform CLI version to be used by the pipelines.
+- name: tfVersion
+  value: '1.5.7'
+
+stages:
+- template: azure-pipelines-templates/10_terraform_preparation.yml
+  parameters:
+    awsVectoTfStateBucketName: $(awsVectoTfStateBucketName)
+    adoServiceConnectionAwsName: $(adoServiceConnectionAwsName)
+    adoVectoPipelineVariableGroupName: $(adoVectoPipelineVariableGroupName)
+    vectoRepoGitUrl: $(vectoRepoGitUrl)
+    vectoRepoName: $(vectoRepoName)
+    vectoRepoBranchName: $(vectoRepoBranchName)
+    oidcAdoServiceConnectionName: $(oidcAdoServiceConnectionName)
+    oidcAwsProviderDeployed: $(oidcAwsProviderDeployed)
+    adoAgentPoolName: $(adoAgentPoolName)
+    adoVectoPipelineName: $(adoVectoPipelineName)
+    adoVectoPipelineRepoName: $(adoVectoPipelineRepoName)
+    adoVectoPipelineReleaseBranchName: $(adoVectoPipelineReleaseBranchName)
+    awsVectoTfStateFilePrefix: $(awsVectoTfStateFilePrefix)
+    awsResourceNamePrefix: $(awsResourceNamePrefix)
+    awsRegionName: $(awsRegionName)
+    tfVersion: $(tfVersion)
+
+- template: azure-pipelines-templates/20_terraform_approval_apply.yml
+  parameters:
+    adoServiceConnectionAwsName: $(adoServiceConnectionAwsName)
+    awsRegionName: $(awsRegionName)
+    tfVersion: $(tfVersion)

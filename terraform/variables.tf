@@ -13,9 +13,10 @@ variable "vecto_setup_settings" {
   description = "Info to setup the VECTO CI/CD resources."
   type = object({
     aws_settings = object({
-      state_bucket_name = string
-      target_region     = string
-      resource_prefix   = optional(string, "")
+      oidc_provider_deployed = bool
+      state_bucket_name      = string
+      target_region          = string
+      resource_prefix        = optional(string, "")
     })
     ado_settings = object({
       organization_id            = string

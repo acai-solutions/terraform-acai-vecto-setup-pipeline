@@ -10,40 +10,39 @@
 
 
 parameters:
+  - name: awsVectoTfStateBucketName
+    type: string
   - name: adoServiceConnectionAwsName
-    type: string 
-  - name: adoAgentPoolName
-    type: string 
-  - name: adoServiceConnectionOidcAwsName
-    type: string 
-  - name: adoVectoPipelineRepoName
-    type: string 
-  - name: adoVectoPipelineReleaseBranchName
-    type: string 
-  - name: adoVectoPipelineName
     type: string 
   - name: adoVectoPipelineVariableGroupName
     type: string 
-  - name: awsVectoTfStateBucketName
-    type: string
-  - name: awsVectoTfStateFilePrefix
-    type: string
-  - name: awsResourceNamePrefix
-    type: string
-  - name: awsRegionName
-    type: string
   - name: vectoRepoGitUrl
     type: string
   - name: vectoRepoName
     type: string
   - name: vectoRepoBranchName
     type: string
+  - name: oidcAdoServiceConnectionName
+    type: string 
+  - name: oidcAwsProviderDeployed
+    type: string 
+  - name: adoAgentPoolName
+    type: string 
+  - name: adoVectoPipelineName
+    type: string 
+  - name: adoVectoPipelineRepoName
+    type: string 
+  - name: adoVectoPipelineReleaseBranchName
+    type: string 
+  - name: awsVectoTfStateFilePrefix
+    type: string
+  - name: awsResourceNamePrefix
+    type: string
+  - name: awsRegionName
+    type: string
   - name: tfVersion
     type: string
     default: 1.6.0
-  - name: directory
-    type: string
-    default: terraform
 
 stages:
   - stage: TerraformPreparation
@@ -76,7 +75,7 @@ stages:
           regionName: ${{ parameters.awsRegionName }}
           scriptType: "inline"
           inlineScript: |
-            cd ${{parameters.directory}} 
+            cd terraform 
             terraform init \
               -backend-config="bucket=${{ parameters.awsVectoTfStateBucketName }}" \
               -backend-config="key=${{ parameters.awsVectoTfStateFilePrefix }}acai-vecto-setup.tfstate" \
@@ -87,23 +86,24 @@ stages:
           echo "Organization (Collection) ID: $(System.CollectionId)"
           # Extracting organization name from the URL
           ORG_NAME=$(echo "$(System.TeamFoundationCollectionUri)" | awk -F'/' '{print $(NF-1)}')  # Adjust if necessary
-          cd ${{parameters.directory}}
+          cd terraform
 
           # Write the Terraform variables in HCL format
           cat > vecto_setup_settings.tfvars <<EOF
           vecto_setup_settings = {
             aws_settings = {
-              state_bucket_name = "${{ parameters.awsVectoTfStateBucketName }}"
-              state_file_prefix = "${{ parameters.awsVectoTfStateFilePrefix }}"
-              target_region     = "${{ parameters.awsRegionName }}"
-              resource_prefix   = "${{ parameters.awsResourceNamePrefix }}"
+              oidc_provider_deployed = ${{ parameters.oidcAwsProviderDeployed }}
+              state_bucket_name      = "${{ parameters.awsVectoTfStateBucketName }}"
+              state_file_prefix      = "${{ parameters.awsVectoTfStateFilePrefix }}"
+              target_region          = "${{ parameters.awsRegionName }}"
+              resource_prefix        = "${{ parameters.awsResourceNamePrefix }}"
             }
             ado_settings = {
               organization_id            = "$(System.CollectionId)"
               organization_name          = "${ORG_NAME}"
               project_name               = "$(System.TeamProject)"
               agent_pool_name            = "${{ parameters.adoAgentPoolName }}"
-              oidc_service_endpoint_name = "${{ parameters.adoServiceConnectionOidcAwsName }}"
+              oidc_service_endpoint_name = "${{ parameters.oidcAdoServiceConnectionName }}"
               vecto_pipeline_repo = {
                 repo_name           = "${{ parameters.adoVectoPipelineRepoName }}"
                 release_branch_name = "${{ parameters.adoVectoPipelineReleaseBranchName }}"
@@ -114,10 +114,10 @@ stages:
               }
             }
             vecto_repo_settings = {
-              git_url     = "${{ parameters.vectoRepoGitUrl }}"
-              repo_name   = "${{ parameters.vectoRepoName }}"
-              repo_branch = "${{ parameters.vectoRepoBranchName }}"
-              state_file_prefix   = "${{ parameters.awsVectoTfStateFilePrefix }}"
+              git_url           = "${{ parameters.vectoRepoGitUrl }}"
+              repo_name         = "${{ parameters.vectoRepoName }}"
+              repo_branch       = "${{ parameters.vectoRepoBranchName }}"
+              state_file_prefix = "${{ parameters.awsVectoTfStateFilePrefix }}"
             }
           }
           EOF
@@ -132,7 +132,7 @@ stages:
           scriptType: "inline"
           continueOnError: false
           inlineScript: |
-            cd ${{parameters.directory}} 
+            cd terraform 
             export AZDO_PERSONAL_ACCESS_TOKEN=$(PAT-VECTO_ADO_MANAGEMENT_ACCESS)
 
             terraform plan --var-file=vecto_setup_settings.tfvars --out=terraform.tfplan

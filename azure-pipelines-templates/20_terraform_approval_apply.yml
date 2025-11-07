@@ -17,11 +17,7 @@ parameters:
   - name: tfVersion
     type: string
     default: 1.6.0
-  - name: tfApplyBranch
-    type: boolean
-  - name: directory
-    type: string
-    default: terraform
+
 
 stages:
   - stage: TerraformApproveAndApply
@@ -38,10 +34,10 @@ stages:
         inputs: 
           buildType: current
           artifactName: terraform.tfplan.show
-          targetPath: ${{ parameters.directory }} 
+          targetPath: terraform 
 
       - bash: |
-          cd ${{ parameters.directory }} 
+          cd terraform 
           echo "Show Terraform Plan"
           cat terraform.tfplan.show 
         displayName: Show terraform plan
@@ -80,9 +76,9 @@ stages:
 
       - bash: |
           echo $(System.DefaultWorkingDirectory)
-          echo ${{ parameters.directory }} 
+          echo terraform 
           cd $(System.DefaultWorkingDirectory)
-          rm -rf ${{ parameters.directory }} 
+          rm -rf terraform 
           unzip terraform_folder.zip 
         displayName: Unzip terraform folder
         
