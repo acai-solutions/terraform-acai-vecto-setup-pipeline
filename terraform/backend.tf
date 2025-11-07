@@ -11,7 +11,8 @@
 
 terraform {
   backend "s3" {
-    key      = "acai-vecto-setup.tfstate"
+    # bucket will be injected by pipeline
+    # key will be injected by pipeline
     encrypt  = true
   }
 }

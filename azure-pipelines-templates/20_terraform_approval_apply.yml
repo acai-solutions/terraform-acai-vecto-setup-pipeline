@@ -93,6 +93,6 @@ stages:
           regionName: ${{ parameters.awsRegionName }}
           scriptType: "inline"
           inlineScript: |
-            cd ${{parameters.directory}} 
+            cd terraform
             export AZDO_PERSONAL_ACCESS_TOKEN=$(PAT-VECTO_ADO_MANAGEMENT_ACCESS)
             terraform apply --auto-approve terraform.tfplan

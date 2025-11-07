@@ -143,12 +143,12 @@ stages:
       - task: PublishPipelineArtifact@1 
         displayName: Publish artefact terraform.tfplan.show
         inputs: 
-          targetPath: '${{ parameters.directory }}/terraform.tfplan.show' 
+          targetPath: 'terraform/terraform.tfplan.show' 
           artifactName: 'terraform.tfplan.show'
 
       - bash: |
           cd $(System.DefaultWorkingDirectory)
-          zip -r terraform_folder.zip ./${{ parameters.directory }}/
+          zip -r terraform_folder.zip ./terraform/
           ls
         displayName: Zip terraform folder
 
