@@ -30,6 +30,8 @@ parameters:
     type: string 
   - name: adoVectoPipelineName
     type: string 
+  - name: adoVectoPipelinePathName
+    type: string 
   - name: adoVectoPipelineRepoName
     type: string 
   - name: adoVectoPipelineReleaseBranchName
@@ -109,6 +111,7 @@ stages:
                 release_branch_name = "${{ parameters.adoVectoPipelineReleaseBranchName }}"
               }
               vecto_pipeline = {
+                path                = "${{ parameters.adoVectoPipelinePathName }}"
                 pipeline_name       = "${{ parameters.adoVectoPipelineName }}"
                 variable_group_name = "${{ parameters.adoVectoPipelineVariableGroupName }}"
               }

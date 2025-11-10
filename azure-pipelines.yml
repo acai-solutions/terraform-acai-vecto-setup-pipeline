@@ -42,7 +42,7 @@ variables:
 
 # Branch of the module repository to use for provisioning.
 - name: vectoRepoBranchName
-  value: '2.0.0'
+  value: '2.1.0'
 
 # Name of the created OIDC-based Azure DevOps service connection used to access AWS. 
 # The suffix 'aws-lz-prod' should represent the target AWS Organization.
@@ -64,7 +64,7 @@ variables:
 
 # Repository name in Azure DevOps that will host the VECTO pipeline definitions.
 - name: adoVectoPipelineRepoName
-  value: 'Pipeline--VECTO'
+  value: 'AWS-LZ-VECTO'
 
 # Branch name that will represent the AWS Organization.
 - name: adoVectoPipelineReleaseBranchName
@@ -101,6 +101,7 @@ stages:
     oidcAwsProviderDeployed: $(oidcAwsProviderDeployed)
     adoAgentPoolName: $(adoAgentPoolName)
     adoVectoPipelineName: $(adoVectoPipelineName)
+    adoVectoPipelinePathName: $(adoVectoPipelinePathName)
     adoVectoPipelineRepoName: $(adoVectoPipelineRepoName)
     adoVectoPipelineReleaseBranchName: $(adoVectoPipelineReleaseBranchName)
     awsVectoTfStateFilePrefix: $(awsVectoTfStateFilePrefix)

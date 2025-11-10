@@ -15,6 +15,7 @@ variable "vecto_setup_settings" {
     aws_settings = object({
       oidc_provider_deployed = optional(bool, false)
       state_bucket_name      = string
+      state_file_prefix      = optional(string, "")
       target_region          = string
       resource_prefix        = optional(string, "")
     })
@@ -29,6 +30,7 @@ variable "vecto_setup_settings" {
         release_branch_name = optional(string, "main")            # for an existing repo, this must be a new branch name
       })
       vecto_pipeline = object({
+        path                = optional(string, "\\")
         pipeline_name       = optional(string, "pipeline--vecto")
         variable_group_name = optional(string, "VECTO_ACCESS_TOKEN")
       })
