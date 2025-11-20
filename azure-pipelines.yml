@@ -42,12 +42,12 @@ variables:
 
 # Branch of the module repository to use for provisioning.
 - name: vectoRepoBranchName
-  value: '2.1.0'
+  value: '2.1.1'
 
 # Name of the created OIDC-based Azure DevOps service connection used to access AWS. 
 # The suffix 'aws-lz-prod' should represent the target AWS Organization.
 - name: oidcAdoServiceConnectionName
-  value: 'acai-vecto-oidc-connection-to-aws-lz-prod'
+  value: 'acai-vecto-oidc-connection-to-aws-lz{-Env_ID}'
 
 # Set to true if an existing OIDC provider for Azure DevOps is already deployed in AWS.
 # This will be the case if you have a parallel VECTO installation running in the AWS Organization.
@@ -60,7 +60,11 @@ variables:
 
 # Display name of the VECTO pipeline created in Azure DevOps.
 - name: adoVectoPipelineName
-  value: 'Pipeline--VECTO'
+  value: 'AWS-LZ{-Env_ID}-VECTO'
+
+# Azure DevOps Pipeline-Path for the VECTO Pipelines.
+- name: adoVectoPipelinePathName
+  value: '/AWS-LZ-VECTO'
 
 # Repository name in Azure DevOps that will host the VECTO pipeline definitions.
 - name: adoVectoPipelineRepoName
@@ -68,7 +72,7 @@ variables:
 
 # Branch name that will represent the AWS Organization.
 - name: adoVectoPipelineReleaseBranchName
-  value: 'aws-lz-prod'
+  value: 'aws-lz{-Env_ID}'
 
 # Optional prefix to segregate the VECTO Terraform states,
 # in case of different parallel VECTO deployments in an AWS Organization.

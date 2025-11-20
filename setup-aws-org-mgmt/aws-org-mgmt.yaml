@@ -1,0 +1,48 @@
+# ACAI Solutions
+# Copyright (C) 2025 ACAI GmbH
+#
+# This file is part of ACAI VECTO. Visit https://www.acai.gmbh or https://docs.acai.gmbh for more information.
+# 
+# Proprietary and Confidential - Licensed under ACAI Rahmen-Lizenzvertrag + Order Form (Subscription required)
+# For full license text, see LICENSE file in repository root.
+#
+# For commercial licensing, contact: contact@acai.gmbh
+
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Creates a IAM role in the AWS Organization management account to be assumed by the VECTO pipeline stacksets"
+
+Parameters:
+  VectoMemberRoleName:
+    Type: String
+    Default: vecto--pipeline-stacksets--member-role
+    Description: IAM role name - take the terraform setup output vecto_setup.org_mgmt_cf_input.VectoMemberRoleName
+
+  VectoAdminRoleArn:
+    Type: String
+    Default: arn:aws:iam::{VECTO_ACCOUNT_ID}:role/vecto--pipeline-stacksets--admin-role
+    Description: IAM role ARN of the VECTO Principal-Provisioner StackSets execution admin role - take the terraform setup output vecto_setup.org_mgmt_cf_input.VectoAdminRoleArn
+
+Resources:
+  VectoPipelineStacksetsMemberRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Ref VectoMemberRoleName
+      # Path for a member-role is not supported by StackSets
+      Description: "Role to be assumed from the VECTO Pipeline StackSets"
+      Tags:
+        - Key: "product"  
+          Value: "VECTO"
+        - Key: "provisio_vendor"  
+          Value: "ACAI GmbH"
+
+      AssumeRolePolicyDocument:
+        Statement:
+          - Principal:
+              AWS:
+                - !Ref VectoAdminRoleArn
+            Action:
+              - "sts:AssumeRole"
+            Effect: Allow
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
