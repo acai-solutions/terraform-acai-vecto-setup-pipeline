@@ -56,7 +56,7 @@ data "aws_caller_identity" "current" {}
 # ---------------------------------------------------------------------------------------------------------------------
 module "vecto_setup" {
   # replace with your source URL in case you host VECTO in your own repository
-  source = "git::https://github.com/acai-solutions/terraform-aws-acai-vecto.git//10-setup/ado-oidc?ref=2.1.0"
+  source = "git::https://github.com/acai-solutions/terraform-aws-acai-vecto.git//10-setup/ado-oidc?ref=<Latest-VECTO-Version>"
 
   aws_settings        = var.vecto_setup_settings.aws_settings
   ado_settings        = var.vecto_setup_settings.ado_settings

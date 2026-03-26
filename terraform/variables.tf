@@ -26,6 +26,7 @@ variable "vecto_setup_settings" {
       agent_pool_name            = string
       oidc_service_endpoint_name = optional(string, "vecto-oidc-connection-to-aws")
       vecto_pipeline_repo = object({
+        repo_exists         = optional(bool, false)
         repo_name           = optional(string, "pipeline--vecto") # Name of existing or new ADO Repo
         release_branch_name = optional(string, "main")            # for an existing repo, this must be a new branch name
       })
