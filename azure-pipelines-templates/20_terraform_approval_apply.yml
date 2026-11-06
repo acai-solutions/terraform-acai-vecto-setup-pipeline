@@ -1,5 +1,5 @@
 # ACAI Solutions
-# Copyright (C) 2025 ACAI GmbH
+# Copyright (c) 2026 ACAI GmbH
 #
 # This file is part of ACAI VECTO. Visit https://www.acai.gmbh or https://docs.acai.gmbh for more information.
 # 
@@ -12,11 +12,11 @@
 parameters:
   - name: adoServiceConnectionAwsName
     type: string 
-  - name: awsRegionName
+  - name: applyBranch
     type: string
   - name: tfVersion
     type: string
-    default: 1.6.0
+    default: 1.16.6
 
 
 stages:
@@ -39,12 +39,18 @@ stages:
       - bash: |
           cd terraform 
           echo "Show Terraform Plan"
-          cat terraform.tfplan.show 
+          # defang logging commands of the rendered pipeline files in the plan
+          sed 's/##vso\[/##vso [/g' terraform.tfplan.show
         displayName: Show terraform plan
 
     - job: waitForValidation
       displayName: Wait for manual approval
-      condition: eq(variables['Build.SourceBranchName'], variables['TF_APPLY_BRANCH'])
+      condition: |
+          and(
+            succeeded(),
+            eq(variables['Build.SourceBranch'], 'refs/heads/${{ parameters.applyBranch }}'),
+            eq(stageDependencies.TerraformPreparation.Preparation.outputs['tfplan.hasChanges'], 'true')
+          )
       dependsOn: "TerraformShow"
       pool: server    
       timeoutInMinutes: "4320" # job times out in 3 days
@@ -60,12 +66,15 @@ stages:
       condition:  |
           and(
             succeeded('waitForValidation'),
-            eq(variables['Build.SourceBranchName'], variables['TF_APPLY_BRANCH'])
+            eq(variables['Build.SourceBranch'], 'refs/heads/${{ parameters.applyBranch }}')
           )
       dependsOn: "waitForValidation"
       steps:
       - checkout: self
         persistCredentials: true
+
+      - bash: echo "##vso[task.setvariable variable=awsRegionName]$(sed -n 's/^ *target_region *= *"\(.*\)".*/\1/p' settings/vecto-setup.tfvars)"
+        displayName: "Read target_region from settings/vecto-setup.tfvars"
 
       - task: DownloadPipelineArtifact@2 
         displayName: "Download artifact terraform_folder.zip"
@@ -90,9 +99,11 @@ stages:
         displayName: "Run Terraform apply"
         inputs:
           awsCredentials:  ${{ parameters.adoServiceConnectionAwsName }}
-          regionName: ${{ parameters.awsRegionName }}
+          regionName: $(awsRegionName)
           scriptType: "inline"
           inlineScript: |
             cd terraform
             export AZDO_PERSONAL_ACCESS_TOKEN=$(PAT-VECTO_ADO_MANAGEMENT_ACCESS)
+            # const variables are not stored in the plan file
+            export TF_VAR_vecto_version=$(sed -n 's/^vecto_version *= *"\(.*\)".*/\1/p' ../settings/vecto-setup.tfvars)
             terraform apply --auto-approve terraform.tfplan

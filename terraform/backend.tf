@@ -1,5 +1,5 @@
 # ACAI Solutions
-# Copyright (C) 2025 ACAI GmbH
+# Copyright (c) 2026 ACAI GmbH
 #
 # This file is part of ACAI VECTO. Visit https://www.acai.gmbh or https://docs.acai.gmbh for more information.
 # 
@@ -11,8 +11,8 @@
 
 terraform {
   backend "s3" {
-    # bucket will be injected by pipeline
-    # key will be injected by pipeline
-    encrypt  = true
+    # set at init from ../settings/vecto-setup.tfvars (variables are not allowed here): bucket (state_bucket_name of the
+    # environment), region and key (<state_file_prefix>acai-vecto-setup.tfstate)
+    encrypt = true
   }
 }

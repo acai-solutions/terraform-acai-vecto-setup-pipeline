@@ -1,5 +1,5 @@
 # ACAI Solutions
-# Copyright (C) 2025 ACAI GmbH
+# Copyright (c) 2026 ACAI GmbH
 #
 # This file is part of ACAI VECTO. Visit https://www.acai.gmbh or https://docs.acai.gmbh for more information.
 # 
@@ -10,47 +10,19 @@
 
 
 parameters:
-  - name: awsVectoTfStateBucketName
+  - name: environment # key in settings/vecto-setup.tfvars
     type: string
   - name: adoServiceConnectionAwsName
     type: string 
-  - name: adoVectoPipelineVariableGroupName
-    type: string 
   - name: vectoRepoGitUrl
-    type: string
-  - name: vectoRepoName
-    type: string
-  - name: vectoRepoBranchName
-    type: string
-  - name: oidcAdoServiceConnectionName
-    type: string 
-  - name: oidcAwsProviderDeployed
-    type: string
-  - name: adoAgentPoolName
-    type: string 
-  - name: adoVectoPipelineName
-    type: string 
-  - name: adoVectoPipelinePathName
-    type: string 
-  - name: adoVectoPipelineRepoName
-    type: string 
-  - name: adoVectoPipelineRepoExists
-    type: string
-  - name: adoVectoPipelineReleaseBranchName
-    type: string 
-  - name: awsVectoTfStateFilePrefix
-    type: string
-  - name: awsResourceNamePrefix
-    type: string
-  - name: awsRegionName
     type: string
   - name: tfVersion
     type: string
-    default: 1.6.0
+    default: 1.16.6
 
 stages:
   - stage: TerraformPreparation
-    displayName: "Terraform AWS-Side Preparation"
+    displayName: "Terraform Preparation (${{ parameters.environment }})"
     jobs:
     - job: Preparation
       displayName: "Terraform Init, Validate & Plan"
@@ -68,6 +40,9 @@ stages:
       - checkout: self
         persistCredentials: true
 
+      - bash: echo "##vso[task.setvariable variable=awsRegionName]$(sed -n 's/^ *target_region *= *"\(.*\)".*/\1/p' settings/vecto-setup.tfvars)"
+        displayName: "Read target_region from settings/vecto-setup.tfvars"
+
       - task: TerraformInstaller@1
         inputs:
           terraformVersion: ${{ parameters.tfVersion }}
@@ -76,75 +51,83 @@ stages:
         displayName: "Run Terraform Init & Validate"
         inputs:
           awsCredentials:  ${{ parameters.adoServiceConnectionAwsName }}
-          regionName: ${{ parameters.awsRegionName }}
+          regionName: $(awsRegionName)
           scriptType: "inline"
           inlineScript: |
+            set -e
             cd terraform 
+            # backend blocks do not allow variables: bucket, region and state key come from ../settings/vecto-setup.tfvars
+            # first state_bucket_name inside the environment's block, one-line or multi-line
+            BUCKET=$(awk -v env="${{ parameters.environment }}" '
+              $0 ~ "^[[:space:]]*" env "[[:space:]]*=[[:space:]]*[{]" { in_env = 1 }
+              in_env && match($0, /state_bucket_name[[:space:]]*=[[:space:]]*"[^"]*"/) {
+                value = substr($0, RSTART, RLENGTH); sub(/^[^"]*"/, "", value); sub(/"$/, "", value); print value; exit
+              }
+              in_env && /}/ { in_env = 0 }
+            ' ../settings/vecto-setup.tfvars)
+            if [ -z "${BUCKET}" ]; then
+              echo "##vso[task.logissue type=error]No state_bucket_name for ${{ parameters.environment }} in settings/vecto-setup.tfvars"
+              exit 1
+            fi
+            REGION="$(awsRegionName)"
+            PREFIX=$(sed -n 's/^ *state_file_prefix *= *"\(.*\)".*/\1/p' ../settings/vecto-setup.tfvars)
+            PRIMARY=$(sed -n 's/^ *primary_environment *= *"\(.*\)".*/\1/p' ../settings/vecto-setup.tfvars)
+            STATE_KEY="${PREFIX}acai-vecto-setup.tfstate"
+            # const variables (vecto_version in the module source) are needed by init and validate as well
+            export TF_VAR_vecto_version=$(sed -n 's/^vecto_version *= *"\(.*\)".*/\1/p' ../settings/vecto-setup.tfvars)
             terraform init \
-              -backend-config="bucket=${{ parameters.awsVectoTfStateBucketName }}" \
-              -backend-config="key=${{ parameters.awsVectoTfStateFilePrefix }}acai-vecto-setup.tfstate" \
-              -backend-config="region=${{ parameters.awsRegionName }}"
+              -backend-config="bucket=${BUCKET}" \
+              -backend-config="region=${REGION}" \
+              -backend-config="key=${STATE_KEY}" \
+              -var-file=../settings/vecto-setup.tfvars
+            # former primary (primary_environment changed): forget the shared resources without destroying them,
+            # the new primary needs import blocks for them (module README, "Adopting existing resources")
+            if [ "${PRIMARY}" != "${{ parameters.environment }}" ] && terraform state list | grep -q '^module\.vecto_shared\['; then
+              echo "##vso[task.logissue type=warning]Removing module.vecto_shared from the ${{ parameters.environment }} state, ${PRIMARY} owns the shared resources"
+              terraform state rm 'module.vecto_shared[0]'
+            fi
             terraform validate
-
       - script: |
-          echo "Organization (Collection) ID: $(System.CollectionId)"
-          # Extracting organization name from the URL
-          ORG_NAME=$(echo "$(System.TeamFoundationCollectionUri)" | awk -F'/' '{print $(NF-1)}')  # Adjust if necessary
+          ORG_NAME=$(echo "$(System.TeamFoundationCollectionUri)" | awk -F'/' '{print $(NF-1)}')
           cd terraform
 
-          # Write the Terraform variables in HCL format
-          cat > vecto_setup_settings.tfvars <<EOF
-          vecto_setup_settings = {
-            aws_settings = {
-              oidc_provider_deployed = ${{ parameters.oidcAwsProviderDeployed }}
-              state_bucket_name      = "${{ parameters.awsVectoTfStateBucketName }}"
-              state_file_prefix      = "${{ parameters.awsVectoTfStateFilePrefix }}"
-              target_region          = "${{ parameters.awsRegionName }}"
-              resource_prefix        = "${{ parameters.awsResourceNamePrefix }}"
-            }
-            ado_settings = {
-              organization_id            = "$(System.CollectionId)"
-              organization_name          = "${ORG_NAME}"
-              project_name               = "$(System.TeamProject)"
-              agent_pool_name            = "${{ parameters.adoAgentPoolName }}"
-              oidc_service_endpoint_name = "${{ parameters.oidcAdoServiceConnectionName }}"
-              vecto_pipeline_repo = {
-                repo_exists         = "${{ parameters.adoVectoPipelineRepoExists }}"
-                repo_name           = "${{ parameters.adoVectoPipelineRepoName }}"
-                release_branch_name = "${{ parameters.adoVectoPipelineReleaseBranchName }}"
-              }
-              vecto_pipeline = {
-                path                = "${{ parameters.adoVectoPipelinePathName }}"
-                pipeline_name       = "${{ parameters.adoVectoPipelineName }}"
-                variable_group_name = "${{ parameters.adoVectoPipelineVariableGroupName }}"
-              }
-            }
-            vecto_repo_settings = {
-              git_url           = "${{ parameters.vectoRepoGitUrl }}"
-              repo_name         = "${{ parameters.vectoRepoName }}"
-              repo_branch       = "${{ parameters.vectoRepoBranchName }}"
-              state_file_prefix = "${{ parameters.awsVectoTfStateFilePrefix }}"
+          # values of this run; the settings are in ../settings/vecto-setup.tfvars
+          cat > runtime.tfvars.json <<EOF
+          {
+            "environment": "${{ parameters.environment }}",
+            "ado_organization": {
+              "organization_id": "$(System.CollectionId)",
+              "organization_name": "${ORG_NAME}",
+              "project_name": "$(System.TeamProject)"
             }
           }
           EOF
-        displayName: 'Prepare ADO Settings for Terraform'
+        displayName: 'Prepare runtime values for Terraform'
 
 
       - task: AWSShellScript@1
+        name: tfplan
         displayName: "Run Terraform Plan"
         inputs:
           awsCredentials:  ${{ parameters.adoServiceConnectionAwsName }}
-          regionName: ${{ parameters.awsRegionName }}
+          regionName: $(awsRegionName)
           scriptType: "inline"
           continueOnError: false
           inlineScript: |
+            set -eo pipefail
             cd terraform 
-            export AZDO_PERSONAL_ACCESS_TOKEN=$(PAT-VECTO_ADO_MANAGEMENT_ACCESS)
+            export AZDO_PERSONAL_ACCESS_TOKEN="${ADO_MANAGEMENT_PAT}"
 
-            terraform plan --var-file=vecto_setup_settings.tfvars --out=terraform.tfplan
+            # the plan shows rendered pipeline files: defang their logging commands, the agent runs ##vso[ anywhere in a line
+            RC=0
+            terraform plan -detailed-exitcode --var-file=../settings/vecto-setup.tfvars --var-file=runtime.tfvars.json --out=terraform.tfplan | sed 's/##vso\[/##vso [/g' || RC=$?
+            if [ "${RC}" -eq 1 ]; then exit 1; fi
+            echo "##vso[task.setvariable variable=hasChanges;isOutput=true]$([ "${RC}" -eq 2 ] && echo true || echo false)"
+            # const variables are not stored in the plan file
+            export TF_VAR_vecto_version=$(sed -n 's/^vecto_version *= *"\(.*\)".*/\1/p' ../settings/vecto-setup.tfvars)
             terraform show terraform.tfplan > terraform.tfplan.show
         env:
-            PAT-VECTO_ADO_MANAGEMENT_ACCESS: $(PAT-VECTO_ADO_MANAGEMENT_ACCESS)
+            ADO_MANAGEMENT_PAT: $(PAT-VECTO_ADO_MANAGEMENT_ACCESS)
     
       - task: PublishPipelineArtifact@1 
         displayName: Publish artefact terraform.tfplan.show

@@ -31,6 +31,6 @@ See [LICENSE][license-url] for full details.
 <!-- MARKDOWN LINKS & IMAGES -->
 [acai-shield]: https://img.shields.io/badge/maintained_by-acai.gmbh-CB224B?style=flat
 [acai-url]: https://acai.gmbh
-[terraform-version-shield]: https://img.shields.io/badge/terraform-%3E%3D1.5.7-blue.svg?style=flat&color=blueviolet
+[terraform-version-shield]: https://img.shields.io/badge/terraform-1.16.6-blue.svg?style=flat&color=blueviolet
 [terraform-version-url]: https://developer.hashicorp.com/terraform
 [license-url]: ./LICENSE.md
